@@ -1,5 +1,13 @@
 // @ts-check
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+import path from 'path';
+
+const env = process.env.ENV || 'qauto';
+
+dotenv.config({
+  path: path.resolve(process.cwd(), `.env.${env}`)
+});
 
 /**
  * @see https://playwright.dev/docs/test-configuration
