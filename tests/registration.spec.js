@@ -1,76 +1,75 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
+import WelcomePage from '../support/pages/WelcomePage';
+import GaragePage from '../support/pages/GaragePage';
 
 function generateEmail() {
   return `aqa-${Date.now()}@test.com`;
 }
 
-test.describe('Registration form', () => {
+test.describe('Registration form with POM', () => {
+  let welcomePage;
+  let garagePage;
+
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
-    await page.getByRole('button', { name: 'Sign up' }).click();
-    await expect(page.getByRole('heading', { name: 'Registration' })).toBeVisible();
+    welcomePage = new WelcomePage(page);
+    garagePage = new GaragePage(page);
+
+    await welcomePage.open();
+    await welcomePage.openRegistrationModal();
   });
 
-  test('Positive: user can register with valid data', async ({ page }) => {
-    const email = generateEmail();
+  test('Positive: user can register with valid data', async () => {
+    const user = {
+      name: 'John',
+      lastName: 'Doe',
+      email: generateEmail(),
+      password: 'Password123',
+      repeatPassword: 'Password123',
+    };
 
-    await page.locator('#signupName').fill('John');
-    await page.locator('#signupLastName').fill('Doe');
-    await page.locator('#signupEmail').fill(email);
-    await page.locator('#signupPassword').fill('Password123');
-    await page.locator('#signupRepeatPassword').fill('Password123');
-
-    await expect(page.getByRole('button', { name: 'Register' })).toBeEnabled();
-    await page.getByRole('button', { name: 'Register' }).click();
-
-    await expect(page).toHaveURL(/\/panel\/garage/);
-    await expect(page.getByRole('heading', { name: 'Garage' })).toBeVisible();
+    await welcomePage.registrationModal.register(user);
+    await garagePage.shouldBeOpen();
   });
 
-  test('Negative1: empty Name shows "Name required"', async ({ page }) => {
-    await page.locator('#signupName').focus();
-    await page.locator('#signupLastName').click();
+  test('Negative1: empty Name shows "Name required"', async () => {
+    await welcomePage.registrationModal.nameInput.focus();
+    await welcomePage.registrationModal.lastNameInput.click();
 
-    await expect(page.locator('#signupName')).toHaveClass(/is-invalid/);
-    await expect(page.locator('#signupName').locator('xpath=following-sibling::div')).toContainText('Name required');
+    await welcomePage.registrationModal.nameInput.shouldHaveErrorText('Name required');
   });
 
-  test('Negative2: invalid Name shows validation errors', async ({ page }) => {
-    await page.locator('#signupName').fill('Ф');
-    await page.locator('#signupLastName').click();
+  test('Negative2: invalid Name shows validation errors', async () => {
+    await welcomePage.registrationModal.fillName('Ф');
+    await welcomePage.registrationModal.lastNameInput.click();
 
-    await expect(page.locator('#signupName')).toHaveClass(/is-invalid/);
-    await expect(page.locator('#signupName').locator('xpath=following-sibling::div')).toContainText('Name is invalid');
-    await expect(page.locator('#signupName').locator('xpath=following-sibling::div')).toContainText(
+    await welcomePage.registrationModal.nameInput.shouldHaveErrorText('Name is invalid');
+    await welcomePage.registrationModal.nameInput.shouldHaveErrorText(
       'Name has to be from 2 to 20 characters long'
     );
   });
 
-  test('Negative3: invalid Email shows "Email is incorrect"', async ({ page }) => {
-    await page.locator('#signupEmail').fill('aqa-invalid-email');
-    await page.locator('#signupPassword').click();
+  test('Negative3: invalid Email shows "Email is incorrect"', async () => {
+    await welcomePage.registrationModal.fillEmail('aqa-invalid-email');
+    await welcomePage.registrationModal.passwordInput.click();
 
-    await expect(page.locator('#signupEmail')).toHaveClass(/is-invalid/);
-    await expect(page.locator('#signupEmail').locator('xpath=following-sibling::div')).toContainText('Email is incorrect');
+    await welcomePage.registrationModal.emailInput.shouldHaveErrorText('Email is incorrect');
   });
 
-  test('Negative4: invalid Password shows validation error', async ({ page }) => {
-    await page.locator('#signupPassword').fill('123');
-    await page.locator('#signupRepeatPassword').click();
+  test('Negative4: invalid Password shows validation error', async () => {
+    await welcomePage.registrationModal.fillPassword('123');
+    await welcomePage.registrationModal.repeatPasswordInput.click();
 
-    await expect(page.locator('#signupPassword')).toHaveClass(/is-invalid/);
-    await expect(page.locator('#signupPassword').locator('xpath=following-sibling::div')).toContainText(
+    await welcomePage.registrationModal.passwordInput.shouldHaveErrorText(
       'Password has to be from 8 to 15 characters long and contain at least one integer, one capital, and one small letter'
     );
   });
 
-  test('Negative5: re-enter password mismatch shows "Passwords do not match"', async ({ page }) => {
-    await page.locator('#signupPassword').fill('Password1');
-    await page.locator('#signupRepeatPassword').fill('Password2');
-    await page.locator('#signupName').click();
+  test('Negative5: re-enter password mismatch shows "Passwords do not match"', async () => {
+    await welcomePage.registrationModal.fillPassword('Password1');
+    await welcomePage.registrationModal.fillRepeatPassword('Password2');
+    await welcomePage.registrationModal.nameInput.click();
 
-    await expect(page.locator('#signupRepeatPassword')).toHaveClass(/is-invalid/);
-    await expect(page.locator('#signupRepeatPassword').locator('xpath=following-sibling::div')).toContainText(
+    await welcomePage.registrationModal.repeatPasswordInput.shouldHaveErrorText(
       'Passwords do not match'
     );
   });
